@@ -45,7 +45,10 @@ const createCourseWithImage = async (body, imageFile = null) => {
     level: body.level,
     chapters,
     exams,
-    isDraft: body.isDraft === "true" || body.isDraft === true // <-- Add this line
+    isDraft: body.isDraft === "true" || body.isDraft === true,
+    scheduledPublishDate: body.scheduledPublishDate ? new Date(body.scheduledPublishDate) : null,
+    isScheduled: body.isScheduled === "true" || body.isScheduled === true,
+    publishStatus: body.publishStatus || (body.isDraft === "true" || body.isDraft === true ? "draft" : "published")
   });
 
   return course;
@@ -110,7 +113,16 @@ const updateCourse = async (courseId, body, imageFile = null) => {
   course.chapters = chapters;
   course.exams = exams;
   if (typeof body.isDraft !== "undefined") {
-    course.isDraft = body.isDraft === "true" || body.isDraft === true; // <-- Add this line
+    course.isDraft = body.isDraft === "true" || body.isDraft === true;
+  }
+  if (typeof body.scheduledPublishDate !== "undefined") {
+    course.scheduledPublishDate = body.scheduledPublishDate ? new Date(body.scheduledPublishDate) : null;
+  }
+  if (typeof body.isScheduled !== "undefined") {
+    course.isScheduled = body.isScheduled === "true" || body.isScheduled === true;
+  }
+  if (typeof body.publishStatus !== "undefined") {
+    course.publishStatus = body.publishStatus;
   }
 
   await course.save();
@@ -139,7 +151,7 @@ const getCourseById = async (req, res) => {
       select: 'title lessons',
       populate: {
         path: 'lessons',
-        select: 'title fileName',
+        select: 'title fileName videoUrl fileUrl isFree',
       }
 
     })
@@ -160,7 +172,13 @@ const getCourseById = async (req, res) => {
       lessons: chapter.lessons.map(lesson => ({
         _id: lesson._id,
         title: lesson.title,
-        fileName: lesson.fileName // <-- include fileName in response
+        fileName: lesson.fileName,
+        isFree: lesson.isFree,
+        // Include video URLs only for free lessons
+        ...(lesson.isFree && {
+          videoUrl: lesson.videoUrl,
+          fileUrl: lesson.fileUrl
+        })
       }))
     }))
   };
@@ -187,8 +205,68 @@ const getCourseByIdAdmin = async (req, res) => {
   res.status(200).json(course);
 };
 
+// ✅ Check and publish scheduled courses
+const checkAndPublishScheduledCourses = async () => {
+  try {
+    const now = new Date();
+    const scheduledCourses = await Course.find({
+      isScheduled: true,
+      scheduledPublishDate: { $lte: now },
+      publishStatus: "scheduled"
+    });
 
+    for (const course of scheduledCourses) {
+      course.isDraft = false;
+      course.isScheduled = false;
+      course.publishStatus = "published";
+      await course.save();
+      console.log(`Course "${course.name}" has been automatically published`);
+    }
 
+    return scheduledCourses.length;
+  } catch (error) {
+    console.error("Error checking scheduled courses:", error);
+    return 0;
+  }
+};
+
+// ✅ Toggle lesson free status
+const toggleLessonFreeStatus = async (req, res) => {
+  const { chapterId, lessonId } = req.params;
+  const { isFree } = req.body;
+
+  try {
+    const Chapter = require("../modules/chapterModel");
+
+    const chapter = await Chapter.findById(chapterId);
+    if (!chapter) {
+      return res.status(404).json({ message: "الفصل غير موجود." });
+    }
+
+    const lesson = chapter.lessons.id(lessonId);
+    if (!lesson) {
+      return res.status(404).json({ message: "الدرس غير موجود." });
+    }
+
+    // Ensure all lessons have valid fileName values (fix validation issue)
+    chapter.lessons.forEach(l => {
+      if (!l.fileName) {
+        l.fileName = l.title || 'unnamed';
+      }
+    });
+
+    lesson.isFree = isFree;
+    await chapter.save();
+
+    res.status(200).json({
+      message: `تم ${isFree ? 'جعل' : 'إلغاء'} الدرس مجاني بنجاح`,
+      lesson
+    });
+  } catch (error) {
+    console.error("Error toggling lesson free status:", error);
+    res.status(500).json({ message: "حدث خطأ في تحديث حالة الدرس." });
+  }
+};
 
 module.exports = {
   uploadToImgBB,
@@ -199,4 +277,6 @@ module.exports = {
   getCourseByIdAdmin: expressAsyncHandler(getCourseByIdAdmin),
   deleteCourse: expressAsyncHandler(deleteCourse),
   getAllCoursesForAdmin: expressAsyncHandler(getAllCoursesForAdmin),
+  checkAndPublishScheduledCourses,
+  toggleLessonFreeStatus: expressAsyncHandler(toggleLessonFreeStatus),
 };

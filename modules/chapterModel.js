@@ -12,10 +12,15 @@ const lessonSchema = new mongoose.Schema({
   },
   fileName: {
     type: String,
-    required: true
+    required: false,
+    default: ''
   },
   fileUrl: {
     type: String,
+  },
+  isFree: {
+    type: Boolean,
+    default: false,
   }
 });
 

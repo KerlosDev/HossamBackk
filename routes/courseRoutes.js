@@ -3,10 +3,11 @@ const router = express.Router();
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
-const { createCourseWithImage, getCourses, getCourseById, updateCourse, deleteCourse, getAllCoursesForAdmin, getCourseByIdAdmin } = require("../services/coursesService");
+const { createCourseWithImage, getCourses, getCourseById, updateCourse, deleteCourse, getAllCoursesForAdmin, getCourseByIdAdmin, checkAndPublishScheduledCourses, toggleLessonFreeStatus } = require("../services/coursesService");
 const { isAdmin, protect } = require("../services/authService");
+const { checkScheduledCourses } = require("../middleware/scheduledCourseMiddleware");
 
-router.post("/create",protect, isAdmin, upload.single("image"), async (req, res) => {
+router.post("/create", protect, isAdmin, upload.single("image"), async (req, res) => {
   try {
     const course = await createCourseWithImage(req.body, req.file || null);
     res.status(201).json({
@@ -32,7 +33,7 @@ router.put("/:id", protect, isAdmin, upload.single("image"), async (req, res) =>
   }
 });
 
-router.delete("/:id",protect, isAdmin, async (req, res) => {
+router.delete("/:id", protect, isAdmin, async (req, res) => {
   try {
     await deleteCourse(req.params.id);
     res.status(200).json({ message: "تم حذف الكورس بنجاح" });
@@ -42,8 +43,24 @@ router.delete("/:id",protect, isAdmin, async (req, res) => {
   }
 });
 
-router.get("/", getCourses);
-router.get("/allCourses", protect, isAdmin, getAllCoursesForAdmin);
+router.get("/", checkScheduledCourses, getCourses);
+router.get("/allCourses", protect, isAdmin, checkScheduledCourses, getAllCoursesForAdmin);
+router.get("/check-scheduled", async (req, res) => {
+  try {
+    const publishedCount = await checkAndPublishScheduledCourses();
+    res.status(200).json({
+      message: `تم فحص الكورسات المجدولة`,
+      publishedCount
+    });
+  } catch (error) {
+    console.error("Scheduled check error:", error);
+    res.status(500).json({ message: "خطأ في فحص الكورسات المجدولة" });
+  }
+});
+
+// Toggle lesson free status
+router.put("/chapter/:chapterId/lesson/:lessonId/toggle-free", protect, isAdmin, toggleLessonFreeStatus);
+
 router.get("/:id", getCourseById);
 router.get("/admin/:id", getCourseByIdAdmin);
 

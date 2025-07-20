@@ -45,6 +45,19 @@ const courseSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  scheduledPublishDate: {
+    type: Date,
+    default: null,
+  },
+  isScheduled: {
+    type: Boolean,
+    default: false,
+  },
+  publishStatus: {
+    type: String,
+    enum: ["draft", "published", "scheduled"],
+    default: "draft",
+  },
 }, {
   timestamps: true,
 });
