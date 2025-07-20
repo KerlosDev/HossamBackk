@@ -60,7 +60,12 @@ const getCourses = async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const skip = (page - 1) * limit;
 
-  const courses = await Course.find().skip(skip).limit(parseInt(limit));
+  // Only return published courses (not drafts) for frontend
+  const courses = await Course.find({
+    isDraft: false,
+    publishStatus: { $ne: "draft" }
+  }).skip(skip).limit(parseInt(limit));
+
   res.status(200).json({
     results: courses.length,
     page: +page,
@@ -145,7 +150,11 @@ const getCourseById = async (req, res) => {
     return res.status(400).json({ message: "رابط الكورس غير صالح (ID غير صحيح)." });
   }
 
-  const course = await Course.findById(id)
+  const course = await Course.findOne({
+    _id: id,
+    isDraft: false,
+    publishStatus: { $ne: "draft" }
+  })
     .populate({
       path: 'chapters',
       select: 'title lessons',
