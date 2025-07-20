@@ -28,7 +28,7 @@ dbconnection();
 
 // ✅ Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "https://waltere.vercel.app"],
+  origin: ["http://localhost:3000", "https://www.hossammirah.com"],
   credentials: true,
 }));
 
