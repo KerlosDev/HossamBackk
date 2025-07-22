@@ -153,7 +153,7 @@ const getAllCoursesForAdmin = async (req, res) => {
     const course = await Course.findOne({
       _id: id,
       isDraft: false,
-      publishStatus: { $ne: "draft" }
+      publishStatus: { $ne: "published" }
     })
       .populate({
         path: 'chapters',
