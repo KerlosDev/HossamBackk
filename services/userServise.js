@@ -20,17 +20,28 @@ const getAllStudents = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search || '';
+        const filterStatus = req.query.filterStatus || 'all';
 
         // Create search query
-        const searchQuery = search ? {
-            $or: [
+        let searchQuery = {};
+
+        // Add search conditions
+        if (search) {
+            searchQuery.$or = [
                 { name: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
                 { phoneNumber: { $regex: search, $options: 'i' } },
                 { government: { $regex: search, $options: 'i' } },
                 { level: { $regex: search, $options: 'i' } }
-            ]
-        } : {};
+            ];
+        }
+
+        // Add filter conditions
+        if (filterStatus === 'banned') {
+            searchQuery.isBanned = true;
+        } else if (filterStatus === 'active') {
+            searchQuery.isBanned = { $ne: true };
+        }
 
         // Get total count for pagination
         const total = await User.countDocuments(searchQuery);
