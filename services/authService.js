@@ -86,6 +86,15 @@ exports.signIn = expressAsyncHandler(async (req, res) => {
         return res.status(401).json({ message: 'كلمة المرور غير صحيحة' });
     }
 
+    // Check if user is banned
+    if (user.isBanned) {
+        return res.status(403).json({
+            message: user.banReason || 'تم حظر حسابك من المنصة. يرجى التواصل مع الإدارة.',
+            code: 'USER_BANNED',
+            isBanned: true
+        });
+    }
+
     // Generate new session token for single device login
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
@@ -167,6 +176,15 @@ exports.protect = expressAsyncHandler(async (req, res, next) => {
             return res.status(401).json({ message: "User not found" });
         }
 
+        // Check if user is banned
+        if (user.isBanned) {
+            return res.status(403).json({
+                message: user.banReason || 'تم حظر حسابك من المنصة. يرجى التواصل مع الإدارة.',
+                code: "USER_BANNED",
+                isBanned: true
+            });
+        }
+
         // Check if session token matches (single device login validation)
         if (!decoded.sessionToken || decoded.sessionToken !== user.currentSessionToken) {
             return res.status(401).json({
@@ -206,3 +224,54 @@ exports.isAllow = (...roles) => {
 
 exports.isAdmin = exports.isAllow('admin');
 exports.isAdminOrInstructor = exports.isAllow('admin', 'instructor');
+
+// Optional authentication middleware - allows both authenticated and non-authenticated users
+exports.optionalAuth = expressAsyncHandler(async (req, res, next) => {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+        token = req.headers.authorization.split(" ")[1];
+    }
+
+    // If no token, continue without user data
+    if (!token) {
+        req.user = null;
+        return next();
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select("-password");
+
+        if (!user) {
+            req.user = null;
+            return next();
+        }
+
+        // Check if user is banned
+        if (user.isBanned) {
+            req.user = null;
+            return next();
+        }
+
+        // Check if session token matches (single device login validation)
+        if (!decoded.sessionToken || decoded.sessionToken !== user.currentSessionToken) {
+            req.user = null;
+            return next();
+        }
+
+        // Update last active time
+        user.lastActive = new Date();
+        await user.save();
+
+        req.user = {
+            _id: user._id,
+            ...user.toObject(),
+            role: user.role
+        };
+        next();
+    } catch (error) {
+        // If token is invalid, continue without user data
+        req.user = null;
+        next();
+    }
+});
