@@ -63,19 +63,59 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
         }
 
         const studentsStatus = await Promise.all(students.map(async (student) => {
-            // Check enrollments for paid courses
+            // Check enrollments for paid courses and populate course details
             const enrollments = await Enrollment.find({
                 studentId: student._id,
-            }).populate('courseId', 'name') || [];
+            }).populate({
+                path: 'courseId',
+                populate: {
+                    path: 'chapters',
+                    model: 'Chapter',
+                    populate: {
+                        path: 'lessons',
+                        model: 'Lesson'
+                    }
+                }
+            }) || [];
 
             // Check watch history
             const watchHistory = await WatchHistory.find({ studentId: student._id }) || [];
 
-            // Get enrolled course names
-            const enrolledCourses = enrollments.map(enrollment => ({
-                courseName: enrollment.courseId ? enrollment.courseId.name : 'Unknown Course',
-                enrollmentDate: enrollment.createdAt,
-                paymentStatus: enrollment.paymentStatus
+            // Get enrolled courses with their chapters and lessons
+            const enrolledCourses = await Promise.all(enrollments.map(async enrollment => {
+                const course = enrollment.courseId;
+                
+                if (!course) {
+                    return {
+                        courseName: 'Unknown Course',
+                        enrollmentDate: enrollment.createdAt,
+                        paymentStatus: enrollment.paymentStatus,
+                        chapters: []
+                    };
+                }
+
+                // Map chapters and their lessons
+                const chapters = (course.chapters || []).map(chapter => ({
+                    chapterTitle: chapter.title,
+                    chapterDescription: chapter.description,
+                    lessons: (chapter.lessons || []).map(lesson => ({
+                        lessonTitle: lesson.title,
+                        lessonDescription: lesson.description,
+                        isWatched: watchHistory.some(wh => 
+                            wh.lessonId.toString() === lesson._id.toString()
+                        ),
+                        watchCount: watchHistory.filter(wh => 
+                            wh.lessonId.toString() === lesson._id.toString()
+                        ).length
+                    }))
+                }));
+
+                return {
+                    courseName: course.name,
+                    enrollmentDate: enrollment.createdAt,
+                    paymentStatus: enrollment.paymentStatus,
+                    chapters: chapters
+                };
             }));
 
             // Determine status based on both enrollment and watch history
@@ -91,8 +131,8 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
                 studentInfo: {
                     id: student._id,
                     name: student.name,
-                    email: student.email,      
-                    lastActivity: student.lastActive || student.createdAt,
+                    lastActivity: student.lastActive,
+                    email: student.email,
                     phoneNumber: student.phoneNumber || 'Not provided',
                     parentPhoneNumber: student.parentPhoneNumber || 'Not provided'
                 },
