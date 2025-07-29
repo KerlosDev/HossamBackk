@@ -213,6 +213,7 @@ exports.getAllEnrollments = async (req, res) => {
         // Get total count of enrollments for pagination info
         let countQuery = enrollmentModel.find(filter);
 
+
         // If search query exists, apply it to count query
         if (searchQuery) {
             // We need to fetch IDs first since we're searching across related collections
@@ -230,11 +231,13 @@ exports.getAllEnrollments = async (req, res) => {
 
             countQuery = countQuery.or([
                 { studentId: { $in: studentIds } },
-                { courseId: { $in: courseIds } }
+                { courseId: { $in: courseIds } },
+                { phoneNumber: { $regex: searchQuery, $options: 'i' } }
             ]);
         }
 
         const totalEnrollments = await countQuery.countDocuments();
+
 
         // Build the main query
         let query = enrollmentModel.find(filter)
@@ -260,7 +263,8 @@ exports.getAllEnrollments = async (req, res) => {
 
             query = query.or([
                 { studentId: { $in: studentIds } },
-                { courseId: { $in: courseIds } }
+                { courseId: { $in: courseIds } },
+                { phoneNumber: { $regex: searchQuery, $options: 'i' } }
             ]);
         }
 
