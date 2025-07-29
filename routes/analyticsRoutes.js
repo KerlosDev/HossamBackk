@@ -6,7 +6,8 @@ const {
     getNewStudentsCount,
     calculateTotalRevenue,
     getPendingEnrollments,
-    getStudentsAnalytics
+    getStudentsAnalytics,
+    getStudentSignupsByDay
 } = require('../services/analyticsService');
 const User = require('../modules/userModule');
 
@@ -30,6 +31,16 @@ router.get('/new-students', isAdmin, async (req, res) => {
         const days = parseInt(req.query.days) || 7;
         const count = await getNewStudentsCount(days);
         res.json({ success: true, data: count });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/student-signups', isAdmin, async (req, res) => {
+    try {
+        const days = parseInt(req.query.days) || 30;
+        const signups = await getStudentSignupsByDay(days);
+        res.json({ success: true, data: signups });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
