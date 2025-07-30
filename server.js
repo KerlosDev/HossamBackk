@@ -21,6 +21,7 @@ const bookRoutes = require("./routes/bookRoutes");
 const bookOrderRoutes = require("./routes/bookOrderRoutes");
 const courseAnalyticsRoutes = require("./routes/courseAnalyticsRoutes");
 const courseWithEnrollmentRoutes = require("./routes/courseWithEnrollmentRoutes");
+const studentRatingRoutes = require("./routes/studentRatingRoutes");
 
 dotenv.config();
 const app = express();
@@ -54,6 +55,7 @@ app.use('/books', bookRoutes);
 app.use('/book-orders', bookOrderRoutes);
 app.use('/course-analytics', courseAnalyticsRoutes);
 app.use('/course-data', courseWithEnrollmentRoutes);
+app.use('/student-ratings', studentRatingRoutes);
 
 app.listen(PORT, () => {
   console.log(`The server is running on port ${PORT}`);
