@@ -4,11 +4,7 @@ const User = require('../modules/userModule');
 const Course = require('../modules/courseModule');
 const Chapter = require('../modules/chapterModel');
 const Enrollment = require('../modules/enrollmentModel'); // Assuming this is the correct path for Enrollment
-
- const WatchHistory = require('../modules/WatchHistory');
-const StudentExamResult = require('../modules/examResultSchema');
-const User = require('../modules/userModule');
-
+ 
 
 exports.getStudentProgress = async (req, res) => {
     try {
