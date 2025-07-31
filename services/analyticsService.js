@@ -4,7 +4,6 @@ const User = require('../modules/userModule');
 const Course = require('../modules/courseModule');
 const Chapter = require('../modules/chapterModel');
 const Enrollment = require('../modules/enrollmentModel'); // Assuming this is the correct path for Enrollment
- 
 
 exports.getStudentProgress = async (req, res) => {
     try {
@@ -87,81 +86,55 @@ exports.getStudentProgress = async (req, res) => {
     }
 };
 
-
 exports.getAllStudentsProgress = async (req, res, returnData = false) => {
     try {
-        const progressData = await WatchHistory.aggregate([
-            {
-                $group: {
-                    _id: '$studentId',
-                    totalViews: { $sum: '$watchedCount' },
-                    uniqueLessons: { $addToSet: '$lessonId' },
-                    lastWatchedAt: { $max: '$lastWatchedAt' }
-                }
-            },
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'student'
-                }
-            },
-            { $unwind: '$student' },
-            {
-                $lookup: {
-                    from: 'studentexamresults',
-                    localField: '_id',
-                    foreignField: 'studentId',
-                    as: 'exam'
-                }
-            },
-            {
-                $addFields: {
-                    examsTaken: { $size: { $ifNull: [{ $arrayElemAt: ['$exam.results', 0] }, []] } },
-                    averageScore: {
-                        $cond: [
-                            { $gt: [{ $size: { $ifNull: ['$exam.results', []] } }, 0] },
-                            {
-                                $avg: {
-                                    $map: {
-                                        input: '$exam.results',
-                                        as: 'e',
-                                        in: {
-                                            $divide: ['$$e.correctAnswers', '$$e.totalQuestions']
-                                        }
-                                    }
-                                }
-                            },
-                            0
-                        ]
-                    }
-                }
-            },
-            {
-                $project: {
-                    student: { name: 1, email: 1, lastActive: 1 },
-                    totalViews: 1,
-                    uniqueLessonsCount: { $size: '$uniqueLessons' },
-                    lastWatchedAt: 1,
-                    examsTaken: 1,
-                    averageScore: 1,
-                    progress: { $literal: 100 } // TODO: replace with real logic
-                }
-            }
-        ]);
+        // Get all students who have watch history
+        const studentsWithHistory = await WatchHistory.distinct('studentId');
 
-        if (returnData) return progressData;
+        const studentsProgress = await Promise.all(studentsWithHistory.map(async (studentId) => {
+            const student = await User.findById(studentId).select('name email lastActive');
+            const watchHistory = await WatchHistory.find({ studentId })
+                .populate('courseId', 'name')
+                .populate('chapterId', 'title');
+            const examResults = await StudentExamResult.findOne({ studentId });
 
-        return res.status(200).json({ success: true, data: progressData });
+            // Optionally, you can add a progress field here for completionRate calculation
+            // For now, let's add a dummy progress value (e.g., 100 for demo)
+            return {
+                student,
+                stats: {
+                    totalViews: watchHistory.reduce((sum, entry) => sum + entry.watchedCount, 0),
+                    uniqueLessons: new Set(watchHistory.map(entry => entry.lessonId)).size,
+                    lastActivity: student.lastActive,
+                    examsTaken: examResults?.results.length || 0,
+                    averageScore: examResults ?
+                        examResults.results.reduce((sum, exam) =>
+                            sum + (exam.correctAnswers / exam.totalQuestions), 0) / examResults.results.length : 0
+                },
+                progress: 100 // TODO: Replace with real progress calculation if available
+            };
+        }));
 
+        if (returnData) {
+            return studentsProgress;
+        } else {
+            res.status(200).json({
+                success: true,
+                data: studentsProgress
+            });
+        }
     } catch (error) {
-        console.error('Error optimizing getAllStudentsProgress:', error);
-        if (returnData) return [];
-        return res.status(500).json({ success: false, message: 'Error fetching students progress' });
+        console.error('Error fetching all students progress:', error);
+        if (returnData) {
+            return [];
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'حدث خطأ أثناء جلب تقدم الطلاب'
+            });
+        }
     }
 };
-
 
 exports.getNewStudentsCount = async (days = 7) => {
     const date = new Date();
