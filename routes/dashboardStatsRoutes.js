@@ -17,26 +17,27 @@ router.use(protect);
 // Dashboard all-in-one endpoint
 router.get('/dashboard', isAdmin, async (req, res) => {
     try {
-        // NOTE: getAllStudentsProgress is very heavy and slows down the dashboard.
-        // For now, skip it and return a placeholder for completionRate.
-        // You can move this to a background job or cache it for real-time dashboards.
         const [
             newStudents,
             totalRevenue,
             pendingEnrollments,
             analytics,
-            signups
+            signups,
+            progress
         ] = await Promise.all([
             getNewStudentsCount(7),
             calculateTotalRevenue(),
             getPendingEnrollments(),
             getStudentsAnalytics(),
-            getStudentSignupsByDay(30)
+            getStudentSignupsByDay(30),
+            getAllStudentsProgress(req, res, true) // pass a flag to return data, not response
         ]);
 
-        // Placeholder for completionRate (set to 0 or cached value)
+        // Calculate completion rate from progress data
         let completionRate = 0;
-        // TODO: Calculate and cache completionRate in a background job for better performance
+        if (Array.isArray(progress)) {
+            completionRate = Math.round(progress.reduce((acc, curr) => acc + (curr.progress || 0), 0) / progress.length);
+        }
 
         res.json({
             success: true,
@@ -45,7 +46,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
                 newStudents: newStudents || 0,
                 totalRevenue: totalRevenue || 0,
                 pendingEnrollments: pendingEnrollments || 0,
-                completionRate: completionRate || 0, // Placeholder, see above
+                completionRate: completionRate || 0,
                 monthlyActiveUsers: analytics.monthlyActiveUsers || 0,
                 highEngagement: analytics.highEngagement || 0,
                 averageExamScore: analytics.averageExamScore || 0,
