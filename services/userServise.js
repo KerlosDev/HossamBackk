@@ -272,6 +272,41 @@ const resetUserPassword = async (req, res) => {
     }
 };
 
+// Delete user by ID (admin only)
+const deleteUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Check if user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'المستخدم غير موجود'
+            });
+        }
+
+        // Delete user's associated data (optional, depending on your requirements)
+        // This includes:
+        await WatchHistory.deleteMany({ studentId: userId });
+        await enrollmentModel.deleteMany({ studentId: userId });
+
+        // Delete the user
+        await User.findByIdAndDelete(userId);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'تم حذف المستخدم بنجاح'
+        });
+    } catch (error) {
+        console.error("Delete user error:", error);
+        res.status(500).json({
+            status: 'error',
+            message: 'حدث خطأ في حذف المستخدم'
+        });
+    }
+};
+
 module.exports = {
     getUserByIdService: expressAsyncHandler(getUserByIdService),
     updateUserbyId: expressAsyncHandler(updateUserbyId),
@@ -279,5 +314,6 @@ module.exports = {
     toggleBanStatus: expressAsyncHandler(toggleBanStatus),
     updateLastActive: expressAsyncHandler(updateLastActive),
     getUserAllDataById: expressAsyncHandler(getUserAllDataById),
-    resetUserPassword: expressAsyncHandler(resetUserPassword)
+    resetUserPassword: expressAsyncHandler(resetUserPassword),
+    deleteUser: expressAsyncHandler(deleteUser)
 };

@@ -7,7 +7,9 @@ const {
     getAllStudents,
     toggleBanStatus,
     updateLastActive,
-    getUserAllDataById
+    getUserAllDataById,
+    resetUserPassword,
+    deleteUser
 } = require('../services/userServise');
 const WatchHistory = require('../modules/WatchHistory');
 const Enrollment = require('../modules/enrollmentModel');
@@ -84,7 +86,7 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
             // Get enrolled courses with their chapters and lessons
             const enrolledCourses = await Promise.all(enrollments.map(async enrollment => {
                 const course = enrollment.courseId;
-                
+
                 if (!course) {
                     return {
                         courseName: 'Unknown Course',
@@ -101,10 +103,10 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
                     lessons: (chapter.lessons || []).map(lesson => ({
                         lessonTitle: lesson.title,
                         lessonDescription: lesson.description,
-                        isWatched: watchHistory.some(wh => 
+                        isWatched: watchHistory.some(wh =>
                             wh.lessonId.toString() === lesson._id.toString()
                         ),
-                        watchCount: watchHistory.filter(wh => 
+                        watchCount: watchHistory.filter(wh =>
                             wh.lessonId.toString() === lesson._id.toString()
                         ).length
                     }))
@@ -218,6 +220,8 @@ router.put('/last-active', updateLastActive);
 router.use('/students', isAdmin);
 router.get('/students', getAllStudents);
 router.put('/students/:studentId/ban', toggleBanStatus);
+router.put('/students/:userId/reset-password', resetUserPassword);
+router.delete('/students/:userId', deleteUser);
 
 // Get all data for user by ID (admin only)
 router.get('/:id/all-data', isAdmin, getUserAllDataById);
