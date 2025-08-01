@@ -20,17 +20,28 @@ const getAllStudents = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search || '';
+        const filterStatus = req.query.filterStatus || 'all';
 
         // Create search query
-        const searchQuery = search ? {
-            $or: [
+        let searchQuery = {};
+
+        // Add search conditions
+        if (search) {
+            searchQuery.$or = [
                 { name: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
                 { phoneNumber: { $regex: search, $options: 'i' } },
                 { government: { $regex: search, $options: 'i' } },
                 { level: { $regex: search, $options: 'i' } }
-            ]
-        } : {};
+            ];
+        }
+
+        // Add filter conditions
+        if (filterStatus === 'banned') {
+            searchQuery.isBanned = true;
+        } else if (filterStatus === 'active') {
+            searchQuery.isBanned = { $ne: true };
+        }
 
         // Get total count for pagination
         const total = await User.countDocuments(searchQuery);
@@ -261,38 +272,6 @@ const resetUserPassword = async (req, res) => {
     }
 };
 
-// Delete student by ID
-const deleteStudentById = async (req, res) => {
-    try {
-        const { studentId } = req.params;
-
-        // Find and delete the student
-        const deletedStudent = await User.findByIdAndDelete(studentId);
-
-        if (!deletedStudent) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'الطالب غير موجود'
-            });
-        }
-
-        // Also delete related records (enrollments, watch history)
-        await enrollmentModel.deleteMany({ studentId });
-        await WatchHistory.deleteMany({ studentId });
-
-        res.status(200).json({
-            status: 'success',
-            message: 'تم حذف الطالب بنجاح'
-        });
-    } catch (error) {
-        console.error("Delete student error:", error);
-        res.status(500).json({
-            status: 'error',
-            message: 'حدث خطأ في حذف الطالب'
-        });
-    }
-};
-
 module.exports = {
     getUserByIdService: expressAsyncHandler(getUserByIdService),
     updateUserbyId: expressAsyncHandler(updateUserbyId),
@@ -300,6 +279,5 @@ module.exports = {
     toggleBanStatus: expressAsyncHandler(toggleBanStatus),
     updateLastActive: expressAsyncHandler(updateLastActive),
     getUserAllDataById: expressAsyncHandler(getUserAllDataById),
-    resetUserPassword: expressAsyncHandler(resetUserPassword),
-    deleteStudentById: expressAsyncHandler(deleteStudentById)
+    resetUserPassword: expressAsyncHandler(resetUserPassword)
 };
