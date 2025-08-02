@@ -9,7 +9,8 @@ const {
     updateLastActive,
     getUserAllDataById,
     resetUserPassword,
-    deleteUser
+    deleteUser,
+    getEnrolledStudents
 } = require('../services/userServise');
 const WatchHistory = require('../modules/WatchHistory');
 const Enrollment = require('../modules/enrollmentModel');
@@ -217,6 +218,9 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
 router.get('/', getUserByIdService);
 router.put('/update', updateUserbyId);
 router.put('/last-active', updateLastActive);
+
+// Admin route for enrolled students
+router.get('/enrolled-students', isAdmin, getEnrolledStudents);
 
 // Admin only routes
 router.use('/students', isAdmin);
