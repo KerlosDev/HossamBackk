@@ -14,6 +14,16 @@ const courseSchema = new mongoose.Schema({
     type: String, // رابط الصورة
     required: true,
   },
+  courseLink: {
+    name: {
+      type: String,
+      default: "",
+    },
+    url: {
+      type: String,
+      default: "",
+    },
+  },
   price: {
     type: Number,
     required: function () {

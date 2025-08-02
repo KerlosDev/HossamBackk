@@ -1,5 +1,17 @@
 const mongoose = require("mongoose");
 
+const fileSchema = new mongoose.Schema({
+  fileName: {
+    type: String,
+    required: true,
+    default: ''
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  }
+});
+
 const lessonSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -10,6 +22,8 @@ const lessonSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  files: [fileSchema], // Multiple files per lesson
+  // Keep these for backward compatibility
   fileName: {
     type: String,
     required: false,

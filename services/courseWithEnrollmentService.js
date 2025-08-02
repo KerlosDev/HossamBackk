@@ -37,7 +37,7 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
                 select: 'title lessons',
                 populate: {
                     path: 'lessons',
-                    select: 'title fileName videoUrl fileUrl isFree',
+                    select: 'title fileName videoUrl fileUrl isFree files',
                 }
             })
             .populate({
@@ -86,6 +86,8 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
                 price: course.price,
                 isFree: course.isFree,
                 level: course.level,
+                // Only include course link if user is enrolled
+                ...(isEnrolled ? { courseLink: course.courseLink || { name: "", url: "" } } : {}),
                 createdAt: course.createdAt,
                 updatedAt: course.updatedAt,
                 chapters: course.chapters.map(chapter => ({
@@ -105,6 +107,12 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
                         if (isEnrolled || lesson.isFree) {
                             lessonData.videoUrl = lesson.videoUrl;
                             lessonData.fileUrl = lesson.fileUrl;
+
+                            // Include files array for enrolled users or free lessons
+                            lessonData.files = lesson.files || [];
+                        } else {
+                            // Always include files array but empty for non-enrolled users
+                            lessonData.files = [];
                         }
 
                         return lessonData;
