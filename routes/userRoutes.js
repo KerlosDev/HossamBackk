@@ -48,7 +48,8 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
 
         // Get students with pagination
         const students = await User.find(searchQuery)
-            .select('name phoneNumber parentPhoneNumber email lastActive')
+            .select('name phoneNumber parentPhoneNumber email lastActive createdAt')
+            .sort({ createdAt: -1 }) // Sort by creation date (newest first)
             .lean()
             .skip(skip)
             .limit(limit);
@@ -136,7 +137,8 @@ router.get('/all-students-status', isAdmin, async (req, res) => {
                     lastActivity: student.lastActive,
                     email: student.email,
                     phoneNumber: student.phoneNumber || 'Not provided',
-                    parentPhoneNumber: student.parentPhoneNumber || 'Not provided'
+                    parentPhoneNumber: student.parentPhoneNumber || 'Not provided',
+                    createdAt: student.createdAt
                 },
                 enrollmentStatus: {
                     isEnrolled: enrollments.length > 0,
