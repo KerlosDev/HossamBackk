@@ -88,32 +88,105 @@ exports.getStudentProgress = async (req, res) => {
 
 exports.getAllStudentsProgress = async (req, res, returnData = false) => {
     try {
-        // Get all students who have watch history
-        const studentsWithHistory = await WatchHistory.distinct('studentId');
-
-        const studentsProgress = await Promise.all(studentsWithHistory.map(async (studentId) => {
-            const student = await User.findById(studentId).select('name email lastActive');
-            const watchHistory = await WatchHistory.find({ studentId })
-                .populate('courseId', 'name')
-                .populate('chapterId', 'title');
-            const examResults = await StudentExamResult.findOne({ studentId });
-
-            // Optionally, you can add a progress field here for completionRate calculation
-            // For now, let's add a dummy progress value (e.g., 100 for demo)
+        // Use aggregation to efficiently get all required data in fewer queries
+        const studentsWithStats = await WatchHistory.aggregate([
+            // Group by studentId to calculate stats for each student
+            {
+                $group: {
+                    _id: "$studentId",
+                    totalViews: { $sum: "$watchedCount" },
+                    uniqueLessons: { $addToSet: "$lessonId" },
+                    lastActivity: { $max: "$lastWatchedAt" }
+                }
+            },
+            // Join with users collection to get student info
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "studentInfo"
+                }
+            },
+            // Ensure we only get students with valid info
+            {
+                $match: {
+                    "studentInfo": { $ne: [] }
+                }
+            },
+            // Reshape the data for our response
+            {
+                $project: {
+                    _id: 0,
+                    student: { 
+                        _id: "$_id",
+                        name: { $arrayElemAt: ["$studentInfo.name", 0] },
+                        email: { $arrayElemAt: ["$studentInfo.email", 0] },
+                        lastActive: { $arrayElemAt: ["$studentInfo.lastActive", 0] }
+                    },
+                    stats: {
+                        totalViews: "$totalViews",
+                        uniqueLessons: { $size: "$uniqueLessons" },
+                        lastActivity: "$lastActivity"
+                    }
+                }
+            }
+        ]);
+        
+        // Get exam stats in a single query if needed
+        const examStats = await StudentExamResult.aggregate([
+            {
+                $unwind: "$results"
+            },
+            {
+                $group: {
+                    _id: "$studentId",
+                    examsTaken: { $sum: 1 },
+                    totalScore: { 
+                        $sum: { 
+                            $divide: ["$results.correctAnswers", "$results.totalQuestions"] 
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    examsTaken: 1,
+                    averageScore: { 
+                        $cond: [
+                            { $eq: ["$examsTaken", 0] },
+                            0,
+                            { $divide: ["$totalScore", "$examsTaken"] }
+                        ]
+                    }
+                }
+            }
+        ]);
+        
+        // Create a map of exam stats for quick lookups
+        const examStatsMap = examStats.reduce((map, stat) => {
+            map[stat._id] = {
+                examsTaken: stat.examsTaken,
+                averageScore: stat.averageScore
+            };
+            return map;
+        }, {});
+        
+        // Combine the data
+        const studentsProgress = studentsWithStats.map(studentData => {
+            const examData = examStatsMap[studentData.student._id] || { examsTaken: 0, averageScore: 0 };
+            
             return {
-                student,
+                student: studentData.student,
                 stats: {
-                    totalViews: watchHistory.reduce((sum, entry) => sum + entry.watchedCount, 0),
-                    uniqueLessons: new Set(watchHistory.map(entry => entry.lessonId)).size,
-                    lastActivity: student.lastActive,
-                    examsTaken: examResults?.results.length || 0,
-                    averageScore: examResults ?
-                        examResults.results.reduce((sum, exam) =>
-                            sum + (exam.correctAnswers / exam.totalQuestions), 0) / examResults.results.length : 0
+                    ...studentData.stats,
+                    examsTaken: examData.examsTaken,
+                    averageScore: examData.averageScore
                 },
                 progress: 100 // TODO: Replace with real progress calculation if available
             };
-        }));
+        });
 
         if (returnData) {
             return studentsProgress;
