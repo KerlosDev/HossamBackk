@@ -86,8 +86,11 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
                 price: course.price,
                 isFree: course.isFree,
                 level: course.level,
-                // Only include course link if user is enrolled
-                ...(isEnrolled ? { courseLink: course.courseLink || { name: "", url: "" } } : {}),
+                // For enrolled users: Include full course link
+                // For non-enrolled users: Include only the name of the link but not the URL
+                courseLink: isEnrolled
+                    ? (course.courseLink || { name: "", url: "" })
+                    : { name: course.courseLink?.name || "", url: "" },
                 createdAt: course.createdAt,
                 updatedAt: course.updatedAt,
                 chapters: course.chapters.map(chapter => ({
