@@ -7,7 +7,8 @@ const {
     calculateTotalRevenue,
     getPendingEnrollments,
     getStudentsAnalytics,
-    getStudentSignupsByDay
+    getStudentSignupsByDay,
+    getViewsStatistics
 } = require('../services/analyticsService');
 const User = require('../modules/userModule');
 
@@ -78,5 +79,8 @@ router.get('/students', isAdmin, async (req, res) => {
         });
     }
 });
+
+// Get views statistics (total, last 24h, week, month) - Admin only
+router.get('/views-statistics', isAdmin, getViewsStatistics);
 
 module.exports = router;

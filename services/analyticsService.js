@@ -280,3 +280,93 @@ exports.getStudentsAnalytics = async () => {
         throw error;
     }
 };
+
+exports.getViewsStatistics = async (req, res) => {
+    try {
+        // Get current date
+        const now = new Date();
+        
+        // Calculate dates for different time periods
+        const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        // Aggregate total views
+        const totalViews = await WatchHistory.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$watchedCount" }
+                }
+            }
+        ]);
+        
+        // Aggregate views in last 24 hours
+        const last24HoursViews = await WatchHistory.aggregate([
+            {
+                $match: {
+                    lastWatchedAt: { $gte: last24Hours }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$watchedCount" }
+                }
+            }
+        ]);
+        
+        // Aggregate views in last week
+        const lastWeekViews = await WatchHistory.aggregate([
+            {
+                $match: {
+                    lastWatchedAt: { $gte: lastWeek }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$watchedCount" }
+                }
+            }
+        ]);
+        
+        // Aggregate views in last month
+        const lastMonthViews = await WatchHistory.aggregate([
+            {
+                $match: {
+                    lastWatchedAt: { $gte: lastMonth }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$watchedCount" }
+                }
+            }
+        ]);
+        
+        // Extract values with default 0 if no data
+        const totalViewsCount = totalViews.length > 0 ? totalViews[0].total : 0;
+        const last24HoursViewsCount = last24HoursViews.length > 0 ? last24HoursViews[0].total : 0;
+        const lastWeekViewsCount = lastWeekViews.length > 0 ? lastWeekViews[0].total : 0;
+        const lastMonthViewsCount = lastMonthViews.length > 0 ? lastMonthViews[0].total : 0;
+        
+        // Return aggregated data
+        res.status(200).json({
+            success: true,
+            data: {
+                totalViews: totalViewsCount,
+                last24Hours: last24HoursViewsCount,
+                lastWeek: lastWeekViewsCount,
+                lastMonth: lastMonthViewsCount
+            }
+        });
+    } catch (error) {
+        console.error('Error getting views statistics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching views statistics'
+        });
+    }
+};
