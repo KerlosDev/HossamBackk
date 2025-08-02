@@ -285,12 +285,91 @@ exports.getViewsStatistics = async (req, res) => {
     try {
         // Get current date
         const now = new Date();
-        
+
         // Calculate dates for different time periods
         const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        
+
+        // Get most active student (with highest total views)
+        const mostActiveStudentData = await WatchHistory.aggregate([
+            {
+                $group: {
+                    _id: "$studentId",
+                    totalViews: { $sum: "$watchedCount" },
+                }
+            },
+            {
+                $sort: { totalViews: -1 }
+            },
+            {
+                $limit: 1
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'studentInfo'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    totalViews: 1,
+                    studentEmail: { $arrayElemAt: ["$studentInfo.email", 0] },
+                    studentName: { $arrayElemAt: ["$studentInfo.name", 0] }
+                }
+            }
+        ]);
+
+        // Get most viewed lesson
+        const mostViewedLessonData = await WatchHistory.aggregate([
+            {
+                $group: {
+                    _id: {
+                        lessonId: "$lessonId",
+                        lessonTitle: "$lessonTitle"
+                    },
+                    totalViews: { $sum: "$watchedCount" },
+                    courseId: { $first: "$courseId" },
+                    chapterId: { $first: "$chapterId" }
+                }
+            },
+            {
+                $sort: { totalViews: -1 }
+            },
+            {
+                $limit: 1
+            },
+            {
+                $lookup: {
+                    from: 'courses',
+                    localField: 'courseId',
+                    foreignField: '_id',
+                    as: 'courseInfo'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'chapters',
+                    localField: 'chapterId',
+                    foreignField: '_id',
+                    as: 'chapterInfo'
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    lessonId: "$_id.lessonId",
+                    lessonTitle: "$_id.lessonTitle",
+                    totalViews: 1,
+                    courseName: { $arrayElemAt: ["$courseInfo.name", 0] },
+                    chapterTitle: { $arrayElemAt: ["$chapterInfo.title", 0] }
+                }
+            }
+        ]);
+
         // Aggregate total views
         const totalViews = await WatchHistory.aggregate([
             {
@@ -300,7 +379,7 @@ exports.getViewsStatistics = async (req, res) => {
                 }
             }
         ]);
-        
+
         // Aggregate views in last 24 hours
         const last24HoursViews = await WatchHistory.aggregate([
             {
@@ -315,7 +394,7 @@ exports.getViewsStatistics = async (req, res) => {
                 }
             }
         ]);
-        
+
         // Aggregate views in last week
         const lastWeekViews = await WatchHistory.aggregate([
             {
@@ -330,7 +409,7 @@ exports.getViewsStatistics = async (req, res) => {
                 }
             }
         ]);
-        
+
         // Aggregate views in last month
         const lastMonthViews = await WatchHistory.aggregate([
             {
@@ -345,13 +424,33 @@ exports.getViewsStatistics = async (req, res) => {
                 }
             }
         ]);
-        
+
         // Extract values with default 0 if no data
         const totalViewsCount = totalViews.length > 0 ? totalViews[0].total : 0;
         const last24HoursViewsCount = last24HoursViews.length > 0 ? last24HoursViews[0].total : 0;
         const lastWeekViewsCount = lastWeekViews.length > 0 ? lastWeekViews[0].total : 0;
         const lastMonthViewsCount = lastMonthViews.length > 0 ? lastMonthViews[0].total : 0;
-        
+
+        // Extract information from most active student and most viewed lesson
+        const mostActiveStudent = mostActiveStudentData.length > 0
+            ? {
+                id: mostActiveStudentData[0]._id,
+                name: mostActiveStudentData[0].studentName,
+                email: mostActiveStudentData[0].studentEmail,
+                totalViews: mostActiveStudentData[0].totalViews
+            }
+            : null;
+
+        const mostViewedLesson = mostViewedLessonData.length > 0
+            ? {
+                lessonId: mostViewedLessonData[0].lessonId,
+                lessonTitle: mostViewedLessonData[0].lessonTitle,
+                courseName: mostViewedLessonData[0].courseName,
+                chapterTitle: mostViewedLessonData[0].chapterTitle,
+                totalViews: mostViewedLessonData[0].totalViews
+            }
+            : null;
+
         // Return aggregated data
         res.status(200).json({
             success: true,
@@ -359,7 +458,9 @@ exports.getViewsStatistics = async (req, res) => {
                 totalViews: totalViewsCount,
                 last24Hours: last24HoursViewsCount,
                 lastWeek: lastWeekViewsCount,
-                lastMonth: lastMonthViewsCount
+                lastMonth: lastMonthViewsCount,
+                mostActiveStudent: mostActiveStudent,
+                mostViewedLesson: mostViewedLesson
             }
         });
     } catch (error) {

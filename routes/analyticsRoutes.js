@@ -8,7 +8,8 @@ const {
     getPendingEnrollments,
     getStudentsAnalytics,
     getStudentSignupsByDay,
-    getViewsStatistics
+    getViewsStatistics,
+    getDailyViewsStatistics
 } = require('../services/analyticsService');
 const User = require('../modules/userModule');
 
