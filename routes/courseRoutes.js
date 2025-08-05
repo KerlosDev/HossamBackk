@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
-const { createCourseWithImage, getCourses, getCourseById, updateCourse, deleteCourse, getAllCoursesForAdmin, getCourseByIdAdmin, checkAndPublishScheduledCourses, toggleLessonFreeStatus } = require("../services/coursesService");
+const { createCourseWithImage, getCourses, getCourseById, updateCourse, deleteCourse, getAllCoursesForAdmin, getCourseByIdAdmin, checkAndPublishScheduledCourses, toggleLessonFreeStatus, getCourseContentAnalytics } = require("../services/coursesService");
 const { isAdmin, protect } = require("../services/authService");
 const { checkScheduledCourses } = require("../middleware/scheduledCourseMiddleware");
 
@@ -60,6 +60,9 @@ router.get("/check-scheduled", async (req, res) => {
 
 // Toggle lesson free status
 router.put("/chapter/:chapterId/lesson/:lessonId/toggle-free", protect, isAdmin, toggleLessonFreeStatus);
+
+// Get course content analytics
+router.get("/content-analytics", protect, isAdmin, getCourseContentAnalytics);
 
 router.get("/:id", getCourseById);
 router.get("/admin/:id", getCourseByIdAdmin);
