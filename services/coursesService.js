@@ -2,7 +2,6 @@ const axios = require("axios");
 const Course = require("../modules/courseModule");
 const expressAsyncHandler = require("express-async-handler");
 const mongoose = require("mongoose");
-const LessonView = require("../modules/lessonViewModel");
 // ✅ رفع صورة إلى ImgBB
 const uploadToImgBB = async (buffer) => {
   try {
@@ -71,7 +70,7 @@ const getCourses = async (req, res) => {
       { isDraft: false },
       { publishStatus: "published" }
     ]
-  }).skip(skip).limit(parseInt(limit));
+  }).select('-courseLink').skip(skip).limit(parseInt(limit));
 
 
   console.log("جلب الكورسات:", courses);

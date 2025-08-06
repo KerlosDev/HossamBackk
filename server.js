@@ -23,8 +23,7 @@ const courseAnalyticsRoutes = require("./routes/courseAnalyticsRoutes");
 const courseWithEnrollmentRoutes = require("./routes/courseWithEnrollmentRoutes");
 const studentRatingRoutes = require("./routes/studentRatingRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
-const lessonViewRoutes = require("./routes/lessonViewRoutes");
-
+ 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -59,8 +58,7 @@ app.use('/course-analytics', courseAnalyticsRoutes);
 app.use('/course-data', courseWithEnrollmentRoutes);
 app.use('/student-ratings', studentRatingRoutes);
 app.use('/settings', settingsRoutes);
-app.use('/lesson-views', lessonViewRoutes);
-
+ 
 app.listen(PORT, () => {
   console.log(`The server is running on port ${PORT}`);
 });

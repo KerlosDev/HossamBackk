@@ -3,7 +3,6 @@ const Course = require("../modules/courseModule");
 const Enrollment = require("../modules/enrollmentModel");
 const StudentExamResult = require("../modules/examResultSchema");
 const User = require("../modules/userModule");
-const LessonView = require("../modules/lessonViewModel");
 const XLSX = require('xlsx');
 
 // Get comprehensive course analytics
