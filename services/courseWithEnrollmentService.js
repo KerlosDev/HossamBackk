@@ -121,7 +121,9 @@ const getCourseWithEnrollmentCheck = async (req, res) => {
                         return lessonData;
                     })
                 })),
-                exams: isEnrolled ? course.exams : [] // Only show exams if enrolled
+                exams: course.exams.map(exam => ({
+                    title: exam.title
+                })) // Always show exam titles only (without IDs) regardless of enrollment status
             },
             enrollmentMessage: isEnrolled
                 ? "أنت مشترك في هذا الكورس"
