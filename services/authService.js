@@ -223,7 +223,7 @@ exports.isAllow = (...roles) => {
 };
 
 exports.isAdmin = exports.isAllow('admin');
-exports.isAdminOrInstructor = exports.isAllow('admin', 'instructor');
+exports.isAdminOrInstructor = exports.isAllow('admin', 'instructor','follow');
 
 // Optional authentication middleware - allows both authenticated and non-authenticated users
 exports.optionalAuth = expressAsyncHandler(async (req, res, next) => {
