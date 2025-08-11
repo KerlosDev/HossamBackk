@@ -1,5 +1,5 @@
 const express = require('express');
-const { protect, isAdmin } = require('../services/authService');
+const { protect, isAdmin, isAdminOrInstructor } = require('../services/authService');
 const {
     getStudentProgress,
     getAllStudentsProgress,
@@ -82,6 +82,6 @@ router.get('/students', isAdmin, async (req, res) => {
 });
 
 // Get views statistics (total, last 24h, week, month) - Admin only
-router.get('/views-statistics', isAdmin, getViewsStatistics);
+router.get('/views-statistics', isAdminOrInstructor, getViewsStatistics);
 
 module.exports = router;

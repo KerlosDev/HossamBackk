@@ -4,7 +4,7 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
 const { createCourseWithImage, getCourses, getCourseById, updateCourse, deleteCourse, getAllCoursesForAdmin, getCourseByIdAdmin, checkAndPublishScheduledCourses, toggleLessonFreeStatus, getCourseContentAnalytics } = require("../services/coursesService");
-const { isAdmin, protect } = require("../services/authService");
+const { isAdmin, protect, isAdminOrInstructor } = require("../services/authService");
 const { checkScheduledCourses } = require("../middleware/scheduledCourseMiddleware");
 
 router.post("/create", protect, isAdmin, upload.single("image"), async (req, res) => {
@@ -44,7 +44,7 @@ router.delete("/:id", protect, isAdmin, async (req, res) => {
 });
 
 router.get("/", checkScheduledCourses, getCourses);
-router.get("/allCourses", protect, isAdmin, checkScheduledCourses, getAllCoursesForAdmin);
+router.get("/allCourses", protect, isAdminOrInstructor, checkScheduledCourses, getAllCoursesForAdmin);
 router.get("/check-scheduled", async (req, res) => {
   try {
     const publishedCount = await checkAndPublishScheduledCourses();

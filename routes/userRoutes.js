@@ -1,6 +1,6 @@
 const express = require('express');
 const { validationResult } = require('express-validator');
-const { protect, isAdmin } = require('../services/authService');
+const { protect, isAdmin, isAdminOrInstructor } = require('../services/authService');
 const {
     getUserByIdService,
     updateUserbyId,
@@ -22,7 +22,7 @@ const router = express.Router();
 router.use(protect);
 
 // Admin route to get all students' status
-router.get('/all-students-status', isAdmin, async (req, res) => {
+router.get('/all-students-status', isAdminOrInstructor, async (req, res) => {
     try {
         // Extract pagination parameters
         const page = parseInt(req.query.page) || 1;
