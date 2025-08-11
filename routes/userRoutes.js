@@ -220,7 +220,7 @@ router.put('/update', updateUserbyId);
 router.put('/last-active', updateLastActive);
 
 // Admin route for enrolled students
-router.get('/enrolled-students', isAdmin, getEnrolledStudents);
+router.get('/enrolled-students', isAdminOrInstructor, getEnrolledStudents);
 
 // Admin only routes
 router.use('/students', isAdmin);
