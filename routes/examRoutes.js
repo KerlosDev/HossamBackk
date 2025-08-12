@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
-const { createExamWithImages, getAllExams, getExamById, deleteExamById, updateExamById } = require("../services/examServise");
+const { createExamWithImages, getAllExams, getExamById, deleteExamById, updateExamById, getAllCourses, getAvailableExamsForStudent } = require("../services/examServise");
 const { isAdmin, isAdminOrInstructor, protect } = require("../services/authService");
 
 // ✅ Controller لإنشاء الامتحان
@@ -36,8 +36,34 @@ router.get("/", protect, isAdminOrInstructor, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const searchTerm = req.query.search || '';
+    const courseId = req.query.courseId || null;
+    const visibility = req.query.visibility || null;
 
-    const result = await getAllExams(page, limit, searchTerm);
+    const result = await getAllExams(page, limit, searchTerm, courseId, visibility);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ✅ GET available courses for exam creation
+router.get("/courses", protect, isAdminOrInstructor, async (req, res) => {
+  try {
+    const courses = await getAllCourses();
+    res.json({ courses });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ✅ GET available exams for students
+router.get("/available", protect, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const studentId = req.user.id;
+
+    const result = await getAvailableExamsForStudent(studentId, page, limit);
     res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
